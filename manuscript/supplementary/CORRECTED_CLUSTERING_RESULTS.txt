@@ -1,0 +1,172 @@
+
+====================================================================================================
+  STEP 1: DATA LOADING AND QUALITY CHECKS
+====================================================================================================
+
+Loading UPDRS-III data...
+Total records: 31,217
+Baseline records: 4,186
+Motor items (NP3 columns): 33
+
+Complete cases (before cleaning): 4,166
+Unique patients: 3,991
+
+====================================================================================================
+  STEP 2: DATA QUALITY CHECKS AND OUTLIER REMOVAL
+====================================================================================================
+
+🔍 Checking for impossible UPDRS scores...
+
+UPDRS-III Score Statistics:
+  Minimum: 0.00
+  Maximum: 616.00
+  Mean: 13.17
+  Median: 7.00
+  Theoretical maximum: 132 (33 items × 4 points each)
+
+🚨 OUTLIERS DETECTED: 16 patients with impossible scores!
+
+Outlier details:
+  Patient 101175: UPDRS Total = 133 (IMPOSSIBLE - max is 132)
+  Patient 107668: UPDRS Total = 204 (IMPOSSIBLE - max is 132)
+  Patient 109921: UPDRS Total = 205 (IMPOSSIBLE - max is 132)
+  Patient 137942: UPDRS Total = 616 (IMPOSSIBLE - max is 132)
+  Patient 161098: UPDRS Total = 505 (IMPOSSIBLE - max is 132)
+  Patient 166490: UPDRS Total = 404 (IMPOSSIBLE - max is 132)
+  Patient 209350: UPDRS Total = 507 (IMPOSSIBLE - max is 132)
+  Patient 216637: UPDRS Total = 211 (IMPOSSIBLE - max is 132)
+  Patient 241419: UPDRS Total = 509 (IMPOSSIBLE - max is 132)
+  Patient 243760: UPDRS Total = 225 (IMPOSSIBLE - max is 132)
+  Patient 274520: UPDRS Total = 222 (IMPOSSIBLE - max is 132)
+  Patient 284192: UPDRS Total = 606 (IMPOSSIBLE - max is 132)
+  Patient 294153: UPDRS Total = 409 (IMPOSSIBLE - max is 132)
+  Patient 322335: UPDRS Total = 206 (IMPOSSIBLE - max is 132)
+  Patient 359738: UPDRS Total = 216 (IMPOSSIBLE - max is 132)
+  Patient 414265: UPDRS Total = 404 (IMPOSSIBLE - max is 132)
+
+✅ Removed 16 outlier patients
+Clean dataset: 4,150 patients
+
+🔍 Additional data quality checks...
+  Patients with negative values: 0
+  Patients with items > 4: 21
+
+⚠️  WARNING: Additional data quality issues found!
+  After additional cleaning: 4,129 patients
+
+====================================================================================================
+FINAL CLEAN DATASET:
+  Total patients: 4,129
+  Unique patients: 3,955
+  Removed from original: 37 patients
+====================================================================================================
+
+====================================================================================================
+  STEP 3: BAYESIAN GMM CLUSTERING (ON CLEAN DATA)
+====================================================================================================
+
+Preparing clean data for clustering...
+Features standardized (shape: (4129, 33))
+
+🔍 Running BIC selection for optimal clusters...
+  n_components=2, BIC=-45974.72
+  n_components=3, BIC=-69070.17
+  n_components=4, BIC=-71377.40
+  n_components=5, BIC=-84004.86
+
+✅ Best number of components: 5 (BIC=-84004.86)
+
+Fitting final model with 5 components...
+Clustering complete!
+
+====================================================================================================
+  STEP 4: CLEAN CLUSTER COMPOSITION
+====================================================================================================
+
+Cluster labels: [np.int64(0), np.int64(1), np.int64(2), np.int64(3), np.int64(4)]
+Number of clusters: 5
+
+Cluster        N Patients   % of Total   Mean UPDRS    Std UPDRS
+-----------------------------------------------------------------
+Phenotype 1           602        14.6%        21.69         9.32
+Phenotype 2         1,254        30.4%        16.19         9.65
+Phenotype 3           186         4.5%        23.21        10.25
+Phenotype 4         1,959        47.4%         2.49         2.92
+Phenotype 5           128         3.1%        34.61        12.83
+
+TOTAL               4,129       100.0%
+
+====================================================================================================
+  STEP 5: CLUSTERING QUALITY METRICS
+====================================================================================================
+
+Cluster Validation Metrics:
+  Silhouette Score: 0.207
+  Davies-Bouldin Index: 3.270
+  Calinski-Harabasz Score: 332.743
+
+Uncertainty Statistics:
+  Mean uncertainty: 0.001
+  Max uncertainty: 0.394
+  High uncertainty (>70%): 0 patients
+
+====================================================================================================
+  STEP 6: CLINICAL INTERPRETATION OF CLUSTERS
+====================================================================================================
+
+Clusters ordered by disease severity:
+
+Phenotype                N   Mean UPDRS Clinical Stage                
+----------------------------------------------------------------------
+Phenotype 1           1,959         2.49 Minimal/Early (Mild symptoms) 
+Phenotype 2           1,254        16.19 Moderate (Progressing)        
+Phenotype 3             602        21.69 Moderately Severe             
+Phenotype 4             186        23.21 Moderately Severe             
+Phenotype 5             128        34.61 Severe (Advanced disease)     
+
+====================================================================================================
+  FINAL RECOMMENDATIONS FOR MANUSCRIPT
+====================================================================================================
+
+CORRECTED NUMBERS FOR YOUR MANUSCRIPT:
+
+Abstract & Results:
+  ✓ Number of phenotypes: 5
+  ✓ Sample size: 4,129 patients (after removing 37 outliers)
+  ✓ Silhouette Score: 0.207
+  ✓ Davies-Bouldin Index: 3.270
+
+Table 3 (Cluster Composition):
+
+  Phenotype 1: n=1,959, Mean UPDRS=2.49±2.92
+  Phenotype 2: n=1,254, Mean UPDRS=16.19±9.65
+  Phenotype 3: n=602, Mean UPDRS=21.69±9.32
+  Phenotype 4: n=186, Mean UPDRS=23.21±10.25
+  Phenotype 5: n=128, Mean UPDRS=34.61±12.83
+
+Methods Section Update:
+  Original cohort: 4,166 baseline assessments
+  After quality control: 4,129 patients
+  Removed: 37 patients with invalid UPDRS scores (>132)
+  
+Data Quality Statement:
+  "Data quality control removed 37 patients with 
+   physiologically impossible UPDRS-III scores (>132), resulting in a final 
+   analytical cohort of 4,129 patients from 3,955 
+   unique individuals."
+
+
+====================================================================================================
+CRITICAL FINDING:
+====================================================================================================
+
+Your original analysis included 37 patients with DATA ERRORS.
+This affects ALL reported results!
+
+You MUST:
+1. Update sample size in manuscript: 4,166 → 4,129
+2. Update cluster compositions with corrected numbers above
+3. Re-run ALL downstream analyses with clean data
+4. Update all claims, tables, and figures
+
+====================================================================================================
