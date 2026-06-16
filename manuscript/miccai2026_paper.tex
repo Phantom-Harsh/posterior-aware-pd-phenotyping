@@ -1,0 +1,349 @@
+% ================================================================================
+% MICCAI 2026 — Posterior-Aware Bayesian Mixture Modeling for PD Phenotyping
+% Based on the official MICCAI2026-Latex-Template (llncs, no modifications)
+% Format: LNCS | Length: 8pp content + 2pp refs | Review: Double-blind
+% ================================================================================
+\documentclass[runningheads]{llncs}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx,verbatim}
+\usepackage{booktabs}
+\usepackage{amsmath,amssymb}
+\usepackage{multirow}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{cleveref}
+\usepackage{pifont}
+\newcommand{\cmark}{\ding{51}}
+\newcommand{\xmark}{\ding{55}}
+\usepackage{array}
+\newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
+
+\begin{document}
+
+\title{Posterior-Aware Bayesian Mixture Modeling\\for Multi-Scale Motor Phenotyping\\in Parkinson's Disease}
+\titlerunning{Posterior-Aware BGMM for PD Motor Phenotyping}
+
+\begin{comment}  %% Removed for anonymized MICCAI submission
+\author{First Author\inst{1} \and Second Author\inst{1,2}}
+\authorrunning{F. Author et al.}
+\institute{University, City, Country \and
+Second Institution, City, Country\\
+\email{email@anonymized.com}}
+\end{comment}
+
+\author{Anonymized Authors}  %% Added for anonymized MICCAI submission
+\authorrunning{Anonymized Author et al.}
+\institute{Anonymized Affiliations \\
+    \email{email@anonymized.com}}
+
+\maketitle
+
+% ============================== ABSTRACT ==============================
+\begin{abstract}
+Parkinson's disease (PD) exhibits substantial motor heterogeneity, yet most subtyping studies rely on a single clustering configuration and provide limited uncertainty quantification. We propose a posterior-aware phenotyping pipeline using Bayesian Gaussian mixture models (BGMMs) on $n{=}29{,}366$ MDS-UPDRS-III assessments from PPMI, coupled with a systematic hyperparameter sweep across 2{,}912 configurations and bootstrap stability analysis to select a robust $k_{\mathrm{eff}}{=}5$ solution. Our framework classifies 99.5\% of assessments as decisive (\textsc{Textbook}) and flags 0.5\% as boundary cases (\textsc{Phenotypic Chimeras}). Domain reliability is confirmed via McDonald's $\omega$ (0.755--0.999), temporal precedence via Granger predictability identifies bradykinesia as the dominant leading indicator, and hierarchical nesting reconciles macro- ($k{=}5$) and sub-phenotypes ($k{=}8$) with Cram\'{e}r's $V{=}0.945$. We validate phenotype-specific dopaminergic loss by correlating motor clusters with DaTSCAN striatal binding ratios in $n{=}1{,}839$ patients ($p{<}10^{-8}$), and provide independent structural MRI validation via FreeSurfer~7 subcortical segmentation ($n{=}1{,}706$), revealing modest but significant hippocampal atrophy and ventricular enlargement in the severe-axial phenotype (13/25 ROIs FDR-significant). Out-of-cohort generalization on BioFIND ($n{=}310$) achieves 99.7\% decisive assignments without refitting.
+\keywords{Parkinson's disease \and Motor phenotyping \and Bayesian mixture models \and DaTSCAN imaging \and Structural MRI \and Uncertainty quantification \and Multi-scale clustering}
+\end{abstract}
+
+% ============================== 1. INTRODUCTION (~2 pages) ==============================
+\section{Introduction}
+
+Parkinson's disease (PD) is the second most common neurodegenerative disorder, affecting over 10 million people worldwide and imposing a rapidly growing socioeconomic burden as global populations age~\cite{bloem2021parkinsons}. The hallmark of PD is progressive motor impairment---tremor, rigidity, bradykinesia, postural instability, and gait dysfunction---but the clinical presentation varies enormously across patients. Two individuals with the same total motor severity score may exhibit fundamentally different symptom profiles: one dominated by resting tremor with preserved gait, another by axial rigidity with no tremor at all~\cite{fereshtehnejad2017evolution}. This heterogeneity confounds clinical trials, where a treatment effective for tremor-dominant patients may show no benefit in an unselected cohort, and limits the development of precision therapeutics that target specific motor phenotypes~\cite{simuni2024biologicaldefinition}.
+
+The Movement Disorder Society-Unified Parkinson's Disease Rating Scale Part III (MDS-UPDRS-III)~\cite{goetz2008mds} provides the international standard for motor assessment, comprising 33 items scored on a 0--4 ordinal scale across five clinically established domains: Tremor (10 items), Bradykinesia (10), Rigidity (4--5), Axial function (4), and Bulbar symptoms (3)~\cite{stebbins2013clinimetric}. Each visit-level assessment captures a high-dimensional motor fingerprint, and longitudinal collections such as the Parkinson's Progression Markers Initiative (PPMI)~\cite{ppmi2011} now contain tens of thousands of assessments, creating an opportunity for data-driven phenotyping at unprecedented scale.
+
+Despite this wealth of data, three fundamental methodological gaps limit the current state of PD motor subtyping:
+
+\textbf{Gap 1: Hyperparameter sensitivity.} Most clustering studies report a single configuration---e.g., $k$-means with $k{=}3$~\cite{fereshtehnejad2017evolution} or GMM with hand-chosen covariance~\cite{wen2023gmm}---without exploring how results change across covariance structures, prior specifications, and truncation thresholds. HYDRA~\cite{hydra2024pd} and deep autoencoders~\cite{sattar2024threepd} compound this with additional architectural hyperparameters.
+
+\textbf{Gap 2: Uncertainty quantification.} Hard-assignment methods ($k$-means, HDBSCAN) assign every patient a single label with no confidence measure, yet patients near decision boundaries may exhibit mixed pathology spanning multiple phenotypes~\cite{simuni2024biologicaldefinition}.
+
+\textbf{Gap 3: Multi-scale reconciliation.} Different analyses yield different $k$ (e.g., $k{=}5$ vs.\ $k{=}8$), typically treated as contradictory rather than complementary hierarchical views~\cite{weingarten2022parkinsons}.
+
+\textbf{Our approach.} We address all three gaps via posterior-aware phenotyping with Bayesian Gaussian mixture models (BGMMs) and variational inference. BGMMs provide soft assignments via posterior vectors $\boldsymbol{\pi}_i$ and automatic complexity regulation through Dirichlet priors~\cite{bishop2006pattern}. The posterior enables uncertainty diagnostics---\emph{posterior gap}, \emph{KL divergence from uniform}~\cite{bishop2006pattern}, and \emph{posterior entropy}~\cite{shannon1948mathematical}---that transform labels into clinically actionable triage categories. Temporal domain relationships are assessed via \emph{Granger causality}~\cite{granger1969investigating} and multi-scale nesting via \emph{Cram\'{e}r's $V$}~\cite{cramer1946mathematical}.
+
+
+
+\noindent\textbf{Contributions.}
+\begin{itemize}
+\item \textbf{Methodology:} Posterior-aware BGMM framework with 2{,}912-configuration sweep and bootstrap stability, yielding reproducible $k_{\mathrm{eff}}{=}5$ macro-phenotypes.
+\item \textbf{Clinical diagnostics:} Three-tier uncertainty triage (\textsc{Textbook}/\textsc{Chimera}/\textsc{Ambiguous}) with posterior gap, KL divergence, and entropy metrics.
+\item \textbf{Temporal analysis:} Granger predictability across 20 directed domain pairs identifying bradykinesia as the dominant temporal predictor.
+\item \textbf{Multi-scale reconciliation:} Quantitative hierarchical nesting ($V{=}0.945$) revealing heterogeneity within the majority Mild-Axial phenotype.
+\item \textbf{DaTSCAN validation:} SBR correlation ($n{=}1{,}839$) confirms phenotype-specific dopaminergic loss ($p{<}10^{-8}$).
+\item \textbf{Structural MRI validation:} FreeSurfer~7 subcortical analysis ($n{=}1{,}706$) identifies 13 FDR-significant regions, with bilateral hippocampal atrophy ($-8\%$, $p_{\mathrm{FDR}}{<}0.005$) and ventricular enlargement ($+25\%$) in the severe-axial phenotype.
+\item \textbf{External validation:} Zero-shot BioFIND evaluation with 99.7\% decisive posteriors under moderate distribution shift.
+\end{itemize}
+
+The overall pipeline is illustrated in \cref{fig:pipeline}.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{MICCAI_Pipeline.png}
+\caption{Posterior-aware phenotyping pipeline. \textcircled{\small 1}~Data preprocessing: $n{=}29{,}366$ PPMI assessments $\rightarrow$ RobustScaler $\rightarrow$ 5 clinical domains. \textcircled{\small 2}~BGMM mega-sweep: 2{,}912 configurations $\rightarrow$ composite ranking $\rightarrow$ $k_{\mathrm{eff}}{=}5$. \textcircled{\small 3}~Posterior triage: $\boldsymbol{\pi}_i$ vectors $\rightarrow$ Textbook/Chimera/Ambiguous flags via gap, KL, entropy. \textcircled{\small 4}~Validation: Granger temporal precedence + Cram\'{e}r's $V$ hierarchical nesting + BioFIND zero-shot transfer. Dotted arrow: bootstrap resampling feedback ($B{=}1{,}000$).}
+\label{fig:pipeline}
+\end{figure}
+
+% ============================== 2. RELATED WORK (~1.5 pages) ==============================
+\section{Related Work}
+
+\textbf{Classical PD motor subtyping.} The clinical gold standard divides patients into tremor-dominant (TD) and postural instability/gait difficulty (PIGD) subtypes using MDS-UPDRS-III ratio cutoffs~\cite{stebbins2013clinimetric}. While simple and widely used, this binary classification ignores substantial within-subtype heterogeneity: roughly 30\% of patients transition between subtypes over 5 years~\cite{fereshtehnejad2017evolution}. Choi et al.~\cite{choi2023updated} recently proposed updated classification criteria incorporating factor analysis, but still rely on discrete cutoffs.
+
+\textbf{Data-driven clustering approaches.} Multiple groups have applied unsupervised learning to PPMI data. Wen et al.~\cite{wen2023gmm} used standard GMMs with fixed covariance to identify 3--5 motor subtypes but did not systematically explore hyperparameter sensitivity. Sattar et al.~\cite{sattar2024threepd} demonstrated deep learning-based subtyping with external validation on NINDS-PDBP, achieving three subtypes but without posterior uncertainty quantification. V\'{a}zquez-Ledesma et al.~\cite{hydra2024pd} applied HYDRA to brainstem tractography, identifying distinct PD subtypes with neuroimaging correlates. K-means and hierarchical approaches remain common in neuroimaging-based subtyping~\cite{vazquezledesma2025kmeans}, but inherently produce hard assignments without confidence scores.
+
+\textbf{Bayesian mixture models in clinical applications.} BGMMs extend standard GMMs by placing Dirichlet priors on mixture weights, enabling automatic determination of $k_{\mathrm{eff}}$ and providing full posterior probability vectors~\cite{bishop2006pattern}. While applied in neuroimaging segmentation~\cite{vazquezledesma2025kmeans}, no prior work has systematically swept BGMM hyperparameters---truncation level, covariance type, prior family, concentration, and mean precision---at the scale reported here (2{,}912 configurations).
+
+\textbf{CFA for MDS-UPDRS-III.} The five-domain structure was established by Stebbins et al.~\cite{stebbins2013clinimetric} and independently confirmed in Korean~\cite{koh2019confirmatory} and European cohorts~\cite{lohle2025optimizing}. Internal consistency is traditionally assessed via Cronbach's $\alpha$, but McNeish~\cite{mcneish2018thanks} demonstrated that McDonald's $\omega$---which accounts for heterogeneous factor loadings via an eigenvalue-weighted composite---is more appropriate for multi-dimensional scales.
+
+\textbf{Temporal precedence in PD progression.} Longitudinal studies have examined domain-level predictors of decline~\cite{holden2022dissection,decock2024mci}, but temporal precedence among motor \emph{domains} has not been assessed with Granger predictability~\cite{granger1969investigating}, which tests whether lagged values of one series improve prediction of another beyond its autoregressive baseline.
+
+\textbf{Multi-scale clustering.} Reconciling solutions at different resolutions is well-known in clustering~\cite{weingarten2022parkinsons}. Cram\'{e}r's $V$~\cite{cramer1946mathematical}, computed from the contingency table between two categorical assignments, provides a normalized nesting quality measure: $V > 0.9$ indicates near-perfect nesting.
+
+% ============================== 3. METHODS ==============================
+\section{Methods}
+
+\subsection{Data and Preprocessing}
+
+We analyze $n{=}29{,}366$ MDS-UPDRS-III assessments from $1{,}847$ PD patients (median 14 visits/patient) in PPMI~\cite{ppmi2011}. Visits with ${>}20\%$ missing items are excluded; remaining values are imputed per visit via median. The $p{=}34$ motor features are organized into five validated clinical domains~\cite{stebbins2013clinimetric}. All items are RobustScaler-normalized; the fitted scaler is retained for out-of-cohort inference.
+
+\subsection{BGMM Mega-Sweep with Bootstrap Validation}
+
+We construct a configuration space $\mathcal{C}$ by varying five hyperparameter axes: truncation $K \in \{3,5,8,10,12,15,20,25,30,40,50,70,100\}$ (13 values); covariance $\in \{\text{full, tied, diag, spherical}\}$; prior type (DP vs.\ DD); weight concentration $\alpha_0$ (7 values, $10^{-4}$--$10^{2}$); and mean precision (4 values), yielding $|\mathcal{C}| = 13{\times}4{\times}2{\times}7{\times}4 = 2{,}912$ configurations. Each is evaluated via Silhouette, Davies-Bouldin, Calinski-Harabasz, and $k_{\mathrm{eff}}$ (components with weight ${>}1\%$). The top model is bootstrap-validated via $B{=}1{,}000$ patient-level resamplings.
+
+\subsection{Posterior-Aware Clinical Triage}
+
+For the optimal BGMM, per-sample posterior vectors $\boldsymbol{\pi}_i = (\pi_{i1}, \ldots, \pi_{ik})$ are computed. Each sample receives a clinical flag:
+\begin{equation}
+\text{Flag}(i) = \begin{cases}
+\textsc{Textbook} & \text{if } \max_j \pi_{ij} > 0.8 \\
+\textsc{Phenotypic Chimera} & \text{if } 0.5 < \max_j \pi_{ij} \leq 0.8 \\
+\textsc{Ambiguous} & \text{if } \max_j \pi_{ij} \leq 0.5
+\end{cases}
+\label{eq:flagging}
+\end{equation}
+
+Three complementary diagnostics quantify uncertainty: (i)~\emph{posterior gap} $\Delta_i = \pi_{i(1)} - \pi_{i(2)}$, the difference between the two highest posteriors~\cite{bishop2006pattern}; (ii)~\emph{KL divergence from uniform} $D_{\text{KL}}(\boldsymbol{\pi}_i \| \mathbf{u}) = \sum_j \pi_{ij} \ln(k \cdot \pi_{ij})$, measuring departure from maximum-uncertainty assignment; (iii)~\emph{posterior entropy} $H(\boldsymbol{\pi}_i) = -\sum_j \pi_{ij} \ln \pi_{ij}$, where low entropy indicates high confidence~\cite{shannon1948mathematical}. \textsc{Chimeras} are further analyzed to identify which phenotype pair they bridge.
+
+\subsection{Temporal Precedence via Granger Predictability}
+
+For patients with ${\geq}8$ visits ($n_L{=}1{,}677$), we test Granger predictability~\cite{granger1969investigating} between all 20 directed domain pairs (lag $L{=}3$, AIC-selected) using statsmodels~\cite{seabold2010statsmodels}. Patient-level $p$-values are aggregated via Fisher's method: $\chi^2_{\text{Fisher}} = -2 \sum_{i=1}^{n_L} \ln p_i \sim \chi^2_{2n_L}$. Results are reported as the percentage of patients with significant ($p < 0.05$) predictability per direction.
+
+\subsection{Multi-Scale Hierarchy Reconciliation}
+
+We fit BGMM at $k{=}5$ and $k{=}8$ and compute a contingency table. Nesting quality is assessed via Cram\'{e}r's $V = \sqrt{\chi^2 / (n \cdot (\min(k_1, k_2) - 1))}$~\cite{cramer1946mathematical}; $V > 0.5$ indicates strong hierarchical nesting.
+
+% ============================== 4. RESULTS AND DISCUSSION ==============================
+\section{Results and Discussion}
+
+All computations were executed on a TACC Vista node (144 ARM Neoverse-V2 cores, 243~GB RAM, 120-worker parallelism; ${\sim}2.6$ hours for the mega-sweep).
+
+\subsection{Bootstrap-Stable $k_{\mathrm{eff}}{=}5$ Macro-Phenotypes}
+
+The top-ranked configuration (full covariance, DD prior, $\alpha_0{=}0.1$, $K{=}5$) yields $k_{\mathrm{eff}}{=}5$ with $k_{\mathrm{eff}}^*{=}5.0{\pm}0.0$ under bootstrap (mean posterior gap${=}0.995$), confirming the five-component structure is the most robust solution across the full configuration space.
+
+% --- Side-by-side: Posterior diagnostics + Domain reliability ---
+\begin{table}[t]
+\begin{minipage}[t]{0.47\textwidth}
+\centering
+\caption{Posterior divergence diagnostics.}\label{tab:posterior}
+{\footnotesize
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Flag} & \textbf{Count} & \textbf{\%} & \textbf{Criteria} \\
+\midrule
+\textsc{Textbook} & 29{,}225 & 99.5 & $\max\pi{>}0.8$ \\
+\textsc{Chimera} & 141 & 0.5 & $0.5{<}\max\pi{\leq}0.8$ \\
+\textsc{Ambiguous} & 0 & 0.0 & $\max\pi{\leq}0.5$ \\
+\midrule
+Mean gap $\Delta$ & \multicolumn{2}{c}{0.995} & $\overline{\max\pi}{=}0.999$ \\
+\bottomrule
+\end{tabular}
+}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.50\textwidth}
+\centering
+\caption{Domain reliability~\cite{mcneish2018thanks}.}\label{tab:cfa}
+{\footnotesize
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Domain} & \textbf{Items} & $\boldsymbol{\alpha}$ & $\boldsymbol{\omega}$ & $\bar{\lambda}$ \\
+\midrule
+Tremor       & 10 & .937 & \textbf{.950} & .811 \\
+Rigidity     &  4 & .999 & \textbf{.999} & .998 \\
+Bradykinesia & 10 & .888 & \textbf{.927} & .747 \\
+Axial        &  4 & .525 & \textbf{.887} & .814 \\
+Bulbar       &  3 & .375 & \textbf{.755} & .712 \\
+\bottomrule
+\end{tabular}
+}
+\end{minipage}
+\end{table}
+
+\textsc{Chimera} patients ($n{=}141$, 0.5\%) primarily bridge Mild-Axial and Severe-Axial ($n{=}87$, 62\%) or Sev-Tremor and Sev-Axial ($n{=}54$, 38\%). Critically, M3 (Sev-Axial) is the common ``destination'' for all chimeras---identifying it as a high-risk convergence zone warranting targeted clinical screening. The $k_{\mathrm{eff}}{=}5$ solution yields decisive posteriors for 99.5\% of assessments (\cref{tab:posterior}), supporting phenotype-stratified trial enrichment without forcing hard-boundary labels.
+
+\textbf{Domain reliability.} All five domains show strong-to-excellent reliability (\cref{tab:cfa}). For heterogeneous domains, $\omega$ substantially exceeds $\alpha$ (Axial: $\Delta{=}0.36$; Bulbar: $\Delta{=}0.38$), validating the domain construction and confirming $\omega$ as the appropriate metric~\cite{mcneish2018thanks}.
+
+\textbf{Phenotype profiles.} \cref{fig:explain}(a) shows domain z-score profiles: M3 (Sev-Axial) has the strongest separation (Axial~$z{=}2.47$), M2 (Mild-Axial, 71.7\%) shows uniformly low scores suggesting early-stage disease, and M0/M4 diverge primarily on axial loading.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{fig2_explainability.png}
+\caption{Explainability panels. (a)~Mean RobustScaler-normalized domain z-scores per macro-phenotype; M3 (Sev-Axial) shows the strongest domain separation. (b)~$k_{\mathrm{eff}}$ distribution: red bar marks the best-ranked $k{=}5$ configuration (7.7\% of 2{,}911 configs); the distribution shows that higher $k_{\mathrm{eff}}$ values are more frequent but score lower on composite quality metrics. (c)~$5{\times}5$ Granger predictability matrix (\% patients with $p{<}0.05$); the strongest asymmetry is Bradykinesia$\rightarrow$Axial (20.3\%).}
+\label{fig:explain}
+\end{figure}
+
+\subsection{Temporal Precedence}
+
+Cohort-level Fisher aggregation shows $p{<}10^{-10}$ for all 20 directed pairs. The patient-level pattern is strongly asymmetric (\cref{fig:explain}c, \cref{tab:granger}): bradykinesia shows the strongest outgoing predictability toward axial (20.3\%) and rigidity (19.0\%), while tremor shows weaker longitudinal influence ($10.6$--$14.4$\%), consistent with distinct pathophysiological mechanisms~\cite{holden2022dissection,decock2024mci}. We interpret bradykinesia as a practical leading indicator for downstream motor decline---clinicians monitoring bradykinesia trajectory may anticipate axial deterioration.
+
+% --- Side-by-side: Granger + Multi-scale hierarchy ---
+\begin{table}[t]
+\begin{minipage}[t]{0.40\textwidth}
+\centering
+\caption{Top 5 Granger-predictive directions ($n{=}1{,}677$).}\label{tab:granger}
+{\footnotesize
+\begin{tabular}{lc}
+\toprule
+\textbf{Direction} & \textbf{\% sig.} \\
+\midrule
+Brady $\rightarrow$ Axial & 20.3 \\
+Brady $\rightarrow$ Rigidity & 19.0 \\
+Rigidity $\rightarrow$ Axial & 18.3 \\
+Bulbar $\rightarrow$ Tremor & 17.3 \\
+Bulbar $\rightarrow$ Brady & 17.2 \\
+\bottomrule
+\end{tabular}
+}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.57\textwidth}
+\centering
+\caption{Multi-scale hierarchy ($V{=}0.945$).}\label{tab:hierarchy}
+{\footnotesize
+\begin{tabular}{llrcl}
+\toprule
+ & \textbf{Label} & \textbf{n} & \textbf{\%} & \textbf{Sub-pheno.\ distrib.} \\
+\midrule
+M0 & Mod-Trem & 3{,}498 & 11.9 & S1(89.7),S4(7.3),oth(3.0) \\
+M1 & Sev-Trem & 1{,}174 & 4.0 & S7(\textbf{99.6}),oth(0.4) \\
+M2 & Mild-Ax & 21{,}045 & 71.7 & S0(75),S6(13),S3(10) \\
+M3 & Sev-Ax & 1{,}220 & 4.2 & S2(80.2),S5(18.8) \\
+M4 & Mod-Mix & 2{,}429 & 8.3 & S4(93.1),S6(3.5) \\
+\bottomrule
+\end{tabular}
+}
+\end{minipage}
+\end{table}
+
+\subsection{Multi-Scale Hierarchy}
+
+Cram\'{e}r's $V{=}0.945$ confirms near-perfect nesting (\cref{tab:hierarchy}). As shown in \cref{fig:chimera}(b), Sev-Tremor maps to a single sub-phenotype S7 (99.6\% purity, blue border), while Mild-Axial (71.7\%) splits into three sub-phenotypes (S0, S3, S6), revealing clinically meaningful heterogeneity within the ``mild'' population. This demonstrates that $k{=}5$ and $k{=}8$ are complementary resolutions: the Mild-Axial majority potentially harbors early-diverging trajectories detectable only at finer granularity. \cref{fig:chimera}(a) further shows that 62\% of chimera patients bridge M2$\leftrightarrow$M3 (Mild-Axial to Sev-Axial), suggesting a clinically actionable transition zone where intensive monitoring could prevent progression.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{fig3_chimera_hierarchy.png}
+\caption{Posterior triage and hierarchical nesting. (a)~Donut: 99.5\% Textbook vs.\ 0.5\% Chimera triage; legend shows chimera bridging destinations (M2$\leftrightarrow$M3: 62\%, M1$\leftrightarrow$M3: 38\%---M3 Sev-Axial is the common high-risk destination). (b)~Full $8{\times}5$ contingency matrix mapping sub-phenotypes (k{=}8) to macro-phenotypes (k{=}5); Cram\'{e}r's $V{=}0.945$. Blue borders indicate ${\geq}85\%$ purity. Cells with $n{<}5$ suppressed for clarity.}
+\label{fig:chimera}
+\end{figure}
+
+\subsection{DaTSCAN Imaging Validation}
+
+To establish dopaminergic correlates, we merged phenotype assignments with DaTSCAN SPECT striatal binding ratios (SBR) for $n{=}1{,}839$ PPMI patients with both motor and imaging data. Kruskal-Wallis testing reveals highly significant SBR differences across phenotypes (putamen: $H{=}42.9$, $p{=}1.07{\times}10^{-8}$; caudate: $H{=}25.3$, $p{=}4.4{\times}10^{-5}$). M2 (Mild-Axial) shows the highest putamen SBR ($1.24{\pm}0.76$), consistent with preserved dopaminergic function in the ``mild'' phenotype, while M1 (Sev-Tremor, $0.86{\pm}0.48$) and M0 (Mod-Tremor, $0.91{\pm}0.35$) show the greatest depletion. Pairwise comparisons confirm M2 differs significantly from M0 ($p{<}10^{-4}$), M1 ($p{=}0.001$), and M4 ($p{=}0.010$; Bonferroni-corrected). Bootstrap analysis ($B{=}1{,}000$) yields a M3--M2 putamen SBR difference of $-0.246$ [95\% CI: $-0.452$, $-0.034$]. This imaging validation confirms that clinimetrically derived phenotypes capture biologically distinct dopaminergic states.
+
+\subsection{Structural MRI Validation}
+
+To assess whether motor phenotypes correspond to distinct subcortical neurodegeneration patterns, we analyzed FreeSurfer~7 segmentation volumes (ASEG) from $n{=}1{,}706$ PPMI participants with both MRI and phenotype assignments. All volumes were normalized by estimated total intracranial volume (eTIV). Kruskal-Wallis tests with permutation correction ($B{=}10{,}000$) and Benjamini-Hochberg FDR adjustment were applied across 25 subcortical ROIs.
+
+Of 25 ROIs, 13 reached FDR-corrected significance ($p{<}0.05$), with small but consistent effect sizes ($\eta^2{=}0.005$--$0.010$). M3 (Sev-Ax) exhibited the most pronounced structural signature: bilateral hippocampal volume reduction of $8\%$ relative to M2 (Mild-Ax) (left: $2.44$ vs.\ $2.64{\times}10^{-3}$ eTIV, $p_{\mathrm{FDR}}{=}0.004$; right: $2.51$ vs.\ $2.71$, $p_{\mathrm{FDR}}{=}0.004$; bootstrap 95\% CIs non-overlapping)~\cite{qian2025cortical}. The 3$^{\mathrm{rd}}$ ventricle---a surrogate for central brain atrophy---was $25\%$ larger in M3 ($H{=}21.4$, $p_{\mathrm{FDR}}{=}0.004$, $\eta^2{=}0.010$), and bilateral thalamic volumes were reduced by $8\%$ ($p_{\mathrm{FDR}}{<}0.012$). Amygdala atrophy followed the same pattern (left: $p_{\mathrm{FDR}}{=}0.005$). Cortical thickness from 64 Desikan-Killiany parcels did not reach FDR significance, consistent with baseline-stage imaging where cortical changes are typically subtle~\cite{pereira2024cortical}. Together with the DaTSCAN findings, these results provide converging multimodal evidence that clinimetrically derived phenotypes reflect biologically distinct neurodegenerative states.
+
+\subsection{Out-of-Cohort Generalization: BioFIND}
+
+We apply the PPMI-trained scaler and fixed BGMM to BioFIND~\cite{biofind2015} ($n{=}310$) \textbf{without refitting}. Inference yields 99.7\% \textsc{Textbook} assignments (JSD${=}0.192$), confirming that decision boundaries remain decisive under moderate distribution shift.
+
+\textbf{Limitations.} (1)~Visit-level iid assumption is partially addressed by patient-level bootstrap. (2)~BioFIND is cross-sectional; multi-cohort validation would strengthen claims. (3)~Granger effect sizes (18--20\%) reflect genuine small effects in clinical progression. (4)~Structural MRI effect sizes are small ($\eta^2{\leq}0.010$), as expected for de~novo baseline imaging; longitudinal atrophy trajectories may amplify phenotype-specific differences.
+
+% ============================== 5. CONCLUSION ==============================
+\section{Conclusion}
+
+We presented a posterior-aware motor phenotyping framework achieving: (1)~bootstrap-stable $k_{\mathrm{eff}}{=}5$ from 2{,}912 configurations; (2)~99.5\% decisive posteriors with chimera diagnostics for 141 boundary patients; (3)~domain reliability $\omega{=}0.755$--$0.999$; (4)~Granger analysis identifying bradykinesia as the leading temporal predictor; (5)~hierarchical nesting $V{=}0.945$; (6)~DaTSCAN validation confirming phenotype-specific dopaminergic loss ($p{<}10^{-8}$); (7)~structural MRI validation revealing bilateral hippocampal atrophy and ventricular enlargement in Sev-Axial patients (13/25 subcortical ROIs FDR-significant); and (8)~99.7\% decisive BioFIND inference without refitting.
+
+% ============================== REFERENCES ==============================
+\bibliographystyle{splncs04}
+\begin{thebibliography}{99}
+
+\bibitem{bloem2021parkinsons}
+Bloem, B.R., Okun, M.S., Klein, C.: Parkinson's disease. The Lancet \textbf{397}(10291), 2284--2303 (2021)
+
+\bibitem{goetz2008mds}
+Goetz, C.G., et al.: Movement Disorder Society-sponsored revision of the Unified Parkinson's Disease Rating Scale (MDS-UPDRS). Mov.\ Disord.\ \textbf{23}(15), 2129--2170 (2008)
+
+\bibitem{fereshtehnejad2017evolution}
+Fereshtehnejad, S.M., et al.: Evolution of prodromal Parkinson's disease and dementia with Lewy bodies. Brain \textbf{140}(7), 2015--2030 (2017)
+
+\bibitem{simuni2024biologicaldefinition}
+Simuni, T., et al.: A biological definition of neuronal $\alpha$-synuclein disease. Lancet Neurol.\ \textbf{23}(2), 178--190 (2024)
+
+\bibitem{weingarten2022parkinsons}
+Weingarten, C.P., et al.: Neuroimaging of Parkinson's disease: expanding views. Neurosci.\ Biobehav.\ Rev.\ \textbf{132}, 834--853 (2022)
+
+\bibitem{wen2023gmm}
+Wen, J., et al.: Characterization of PD subtypes using Gaussian mixture models on PPMI. arXiv preprint (2023)
+
+\bibitem{sattar2024threepd}
+Sattar, Y., et al.: Three PD subtypes via ML: PPMI development with PDBP validation. arXiv:2408.11767 (2024)
+
+\bibitem{hydra2024pd}
+V\'{a}zquez-Ledesma, A., et al.: Brainstem tractography and HYDRA identify distinct PD subtypes. Front.\ Neurosci.\ (2024)
+
+\bibitem{bishop2006pattern}
+Bishop, C.M.: Pattern Recognition and Machine Learning. Springer (2006)
+
+\bibitem{vazquezledesma2025kmeans}
+V\'{a}zquez-Ledesma, A., et al.: K-means and hierarchical brain feature clustering for PD subtypes. Front.\ Neurosci.\ (2025)
+
+\bibitem{choi2023updated}
+Choi, S.M., et al.: Updated classification for PD motor subtypes using MDS-UPDRS-III. Mov.\ Disord.\ (2023)
+
+\bibitem{lohle2025optimizing}
+L\"{o}hle, M., et al.: Optimizing MDS-UPDRS Part III for early-stage PD via Rasch modeling. Mov.\ Disord.\ (2025)
+
+\bibitem{holden2022dissection}
+Holden, S.K., et al.: Systematic dissection of MDS-UPDRS to predict PD progression. PMC (2022)
+
+\bibitem{decock2024mci}
+De Cock, V.C., et al.: Impact of MCI on motor progression in PD. Aging \textbf{16}(8) (2024)
+
+\bibitem{seabold2010statsmodels}
+Seabold, S., Perktold, J.: statsmodels: Econometric and statistical modeling with Python. In: SciPy Conf., pp.\ 92--96 (2010)
+
+\bibitem{ppmi2011}
+Marek, K., et al.: The Parkinson Progression Marker Initiative (PPMI). Prog.\ Neurobiol.\ \textbf{95}(4), 629--635 (2011)
+
+\bibitem{biofind2015}
+BioFIND Study Group: Fox Investigation for New Discovery of Biomarkers in PD. Michael J. Fox Foundation (2015)
+
+\bibitem{stebbins2013clinimetric}
+Stebbins, G.T., et al.: How to identify TD and PIGD groups with the MDS-UPDRS. Mov.\ Disord.\ \textbf{28}(5), 668--670 (2013)
+
+\bibitem{koh2019confirmatory}
+Koh, S.B., et al.: CFA of the Korean MDS-UPDRS Motor Scale. J.\ Clin.\ Neurosci.\ \textbf{63}, 185--190 (2019)
+
+\bibitem{mcneish2018thanks}
+McNeish, D.: Thanks coefficient alpha, we'll take it from here. Psychol.\ Methods \textbf{23}(2), 412--433 (2018)
+
+\bibitem{granger1969investigating}
+Granger, C.W.J.: Investigating causal relations by econometric models and cross-spectral methods. Econometrica \textbf{37}(3), 424--438 (1969)
+
+\bibitem{cramer1946mathematical}
+Cram\'{e}r, H.: Mathematical Methods of Statistics. Princeton Univ.\ Press (1946)
+
+\bibitem{shannon1948mathematical}
+Shannon, C.E.: A mathematical theory of communication. Bell Syst.\ Tech.\ J.\ \textbf{27}(3), 379--423 (1948)
+
+\bibitem{qian2025cortical}
+Qian, E., et al.: Cortical and subcortical structural correlates of motor subtypes in Parkinson's disease. NeuroImage: Clinical \textbf{41}, 103571 (2025)
+
+\bibitem{pereira2024cortical}
+Pereira, J.B., et al.: Cortical thinning patterns in Parkinson's disease subtypes: a PPMI study. Neurobiol.\ Aging \textbf{136}, 42--51 (2024)
+
+\end{thebibliography}
+
+\end{document}

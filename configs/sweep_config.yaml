@@ -1,0 +1,106 @@
+# Sweep Configuration
+# Full 2,912-configuration hyperparameter space for BGMM mega-sweep
+# Paper: Posterior-Aware Motor Phenotyping (MICCAI 2026)
+
+sweep:
+  # Truncation levels K (13 values)
+  truncation_K:
+    - 3
+    - 5
+    - 8
+    - 10
+    - 12
+    - 15
+    - 20
+    - 25
+    - 30
+    - 40
+    - 50
+    - 70
+    - 100
+
+  # Covariance structures (4 values)
+  covariance_type:
+    - full
+    - tied
+    - diag
+    - spherical
+
+  # Prior types (2 values)
+  # DP = Dirichlet Process (weight_concentration_prior_type='dirichlet_process')
+  # DD = Dirichlet Distribution (weight_concentration_prior_type='dirichlet_distribution')
+  prior_type:
+    - DP
+    - DD
+
+  # Weight concentration prior (alpha_0) — 7 log-spaced values
+  weight_concentration:
+    - 0.0001
+    - 0.001
+    - 0.01
+    - 0.1
+    - 1.0
+    - 10.0
+    - 100.0
+
+  # Mean precision prior (4 values)
+  mean_precision:
+    - 0.000001
+    - 0.0001
+    - 0.01
+    - 1.0
+
+# Total configs: 13 × 4 × 2 × 7 × 4 = 2,912
+
+# Bootstrap settings
+bootstrap:
+  n_resamples: 1000
+  patient_level: true         # resample patients, not visits
+  random_seed: 42
+
+# Model selection scoring
+scoring:
+  metrics:
+    - silhouette             # maximize
+    - davies_bouldin         # minimize
+    - calinski_harabasz      # maximize
+  composite_rule: "rank_sum"  # rank each metric, sum ranks
+
+# k_eff threshold
+k_eff:
+  min_weight: 0.01           # component weight > 1% to count
+
+# Posterior triage thresholds
+triage:
+  textbook_threshold: 0.80
+  chimera_lower: 0.50
+  chimera_upper: 0.80
+
+# Granger analysis
+granger:
+  min_visits: 8
+  max_lag: 3
+  lag_selection: AIC
+  significance_alpha: 0.05
+
+# Imaging validation
+imaging:
+  datscan:
+    regions:
+      - putamen_L
+      - putamen_R
+      - caudate_L
+      - caudate_R
+    bootstrap_ci_B: 1000
+  mri:
+    atlas: ASEG
+    n_rois: 25
+    normalization: eTIV
+    permutation_B: 10000
+    fdr_method: BH
+    fdr_alpha: 0.05
+
+# Compute
+compute:
+  n_workers: 120
+  random_seed: 42
